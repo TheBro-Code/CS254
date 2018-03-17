@@ -868,7 +868,7 @@ static void simulateTrack(struct FLContext *handle, const char **error){
 	}
 	sleep(0.001);
 	char signalData[65], signalData1[33], signalData2[33];
-	char filename[] = "track_data.csv";
+	char filename[] = "network.txt";
 	generateSignalData(signalData, filename, xCd, yCd);
 	printf("Genrated Singal Data : %s\n", signalData);
 	for(int j = 0;j<32;j++){
