@@ -170,7 +170,7 @@ begin                                                                     --BEGI
 		counter1 + 1 when (counter3 = 4 and cd_match = '0') or (counter3 = 8 and cd_match1 = '0' ) or (counter3 = 16 and cd_match2 = '0')
 		else (others => '0');
 	cnt_next2 <=
-		counter2 + 1 when h2fValid_in = '1'
+		counter2 + 1 when h2fValid_in = '1' and chanAddr_in = "0000001"
 		else counter2;
 	cnt_next3 <= 
 		counter3 + 1 when f2hReady_in = '1' and chanAddr_in = "0000000"
