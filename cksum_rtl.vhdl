@@ -173,7 +173,7 @@ begin                                                                     --BEGI
 		counter2 + 1 when h2fValid_in = '1'
 		else counter2;
 	cnt_next3 <= 
-		counter3 + 1 when f2hReady_in = '1'
+		counter3 + 1 when f2hReady_in = '1' and chanAddr_in = "0000000"
 		else counter3;
 
 	coordinates <=  "00100010000000000000000000000000";
@@ -393,43 +393,43 @@ begin                                                                     --BEGI
 		else "10000001";
 
 	out5_next(7 downto 0) <=
-		"10000001" when reg5(7) = '0' or reg5(6) = '0' or sw_in(5) = '0'
-		else "10000100";
+		"10100001" when reg5(7) = '0' or reg5(6) = '0' or sw_in(5) = '0'
+		else "10100100";
 
 	out5_next(15 downto 8) <=
-		"10000001" when reg5(7) = '0' or reg5(6) = '0' or sw_in(5) = '0'
-		else "10000010" when reg5(7) = '1' and reg5(6) = '1' and sw_in(5) = '1' and sw_in(1) = '1'
-		else "10000100";
+		"10100001" when reg5(7) = '0' or reg5(6) = '0' or sw_in(5) = '0'
+		else "10100010" when reg5(7) = '1' and reg5(6) = '1' and sw_in(5) = '1' and sw_in(1) = '1'
+		else "10100100";
 
 	out5_next(23 downto 16) <=
-		"10000100" when reg5(7) = '1' and reg5(6) = '1' and sw_in(5) = '1' and sw_in(1) = '0'
-		else "10000001";
+		"10100100" when reg5(7) = '1' and reg5(6) = '1' and sw_in(5) = '1' and sw_in(1) = '0'
+		else "10100001";
 		
 	out6_next(7 downto 0) <=
-		"10000001" when reg6(7) = '0' or reg6(6) = '0' or sw_in(6) = '0'
-		else "10000100";
+		"11000001" when reg6(7) = '0' or reg6(6) = '0' or sw_in(6) = '0'
+		else "11000100";
 
 	out6_next(15 downto 8) <=
-		"10000001" when reg6(7) = '0' or reg6(6) = '0' or sw_in(6) = '0'
-		else "10000010" when reg6(7) = '1' and reg6(6) = '1' and sw_in(6) = '1' and sw_in(2) = '1'
-		else "10000100";
+		"11000001" when reg6(7) = '0' or reg6(6) = '0' or sw_in(6) = '0'
+		else "11000010" when reg6(7) = '1' and reg6(6) = '1' and sw_in(6) = '1' and sw_in(2) = '1'
+		else "11000100";
 
 	out6_next(23 downto 16) <=
-		"10000100" when reg6(7) = '1' and reg6(6) = '1' and sw_in(6) = '1' and sw_in(2) = '0'
-		else "10000001";
+		"11000100" when reg6(7) = '1' and reg6(6) = '1' and sw_in(6) = '1' and sw_in(2) = '0'
+		else "11000001";
 
 	out7_next(7 downto 0) <=
-		"10000001" when reg7(7) = '0' or reg7(6) = '0' or sw_in(7) = '0'
-		else "10000100";
+		"11100001" when reg7(7) = '0' or reg7(6) = '0' or sw_in(7) = '0'
+		else "11100100";
 
 	out7_next(15 downto 8) <=
-		"10000001" when reg7(7) = '0' or reg7(6) = '0' or sw_in(7) = '0'
-		else "10000010" when reg7(7) = '1' and reg7(6) = '1' and sw_in(7) = '1' and sw_in(3) = '1'
-		else "10000100";
+		"11100001" when reg7(7) = '0' or reg7(6) = '0' or sw_in(7) = '0'
+		else "11100010" when reg7(7) = '1' and reg7(6) = '1' and sw_in(7) = '1' and sw_in(3) = '1'
+		else "11100100";
 
 	out7_next(23 downto 16) <=
-		"10000100" when reg7(7) = '1' and reg7(6) = '1' and sw_in(7) = '1' and sw_in(3) = '0'
-		else "10000001";
+		"11100100" when reg7(7) = '1' and reg7(6) = '1' and sw_in(7) = '1' and sw_in(3) = '0'
+		else "11100001";
 
 	-- LEDs and 7-seg display
 	with counter select led_out1_next <=
