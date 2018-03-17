@@ -1,0 +1,47 @@
+The Bro-Code v2.0
+
+Team Members
+
+Aman Jain - 160050034
+Sushil Khyalia - 160050035
+Kartik Khandelwal - 160070025
+Syamantak Kumar - 16D070025
+
+NOTE :- The co-ordinates are being read from the board swtiches, and are NOT hard coded.
+
+How to Run :
+
+We have made changes(and included them in the submission) in the following files :- 
+
+1) main.c
+2) cksum_rtl.vhdl
+3) encrypter.vhdl
+4) decrypter.vhdl
+5) hdlmake.cfg (in the same directory as cksum_rtl.vhdl)
+6) board.ucf has not been changed
+
+So in order to run our code, replace the following files 
+
+1) main.c in ~/20140524/makestuff/apps/flcli.
+2) cksum_rtl.vhdl, hdlmake.cfg in ~/20140524/makestuff/hdlmake/apps/makestuff/swled/cksum/vhdl/.
+3) Also include encrypter.vhdl and decrypter.vhdl in ~/20140524/makestuff/hdlmake/apps/makestuff/swled/cksum/vhdl/
+
+After that run these commands in order
+
+cd ~/20140524/makestuff/apps/flcli
+make deps
+cd ~/20140524/makestuff/hdlmake/apps/makestuff/swled/cksum/vhdl/
+../../../../../bin/hdlmake.py -t ../../templates/fx2all/vhdl -b atlys -p fpga
+sudo ../../../../../../apps/flcli/lin.x64/rel/flcli -v 1d50:602b:0002 -i 1443:0007
+sudo ../../../../../../apps/flcli/lin.x64/rel/flcli -v 1d50:602b:0002 -p J:D0D2D3D4:fpga.xsvf
+sudo ../../../../../../apps/flcli/lin.x64/rel/flcli -v 1d50:602b:0002 -s
+*enter any character apart from q*
+
+
+ We have already included the print commands in main.c file which can be seen on terminal during execution which direct the control flow. 
+
+ We have chosen following values:
+
+ Ack1 : 01010011010001010100111001000100
+ Ack2 : 01001110010101010100010001000101
+ Key :  10001010011001011100101001010101
