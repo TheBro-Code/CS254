@@ -184,22 +184,26 @@ begin                                                                     --BEGI
 
 	-- Select values to return for each channel when the host is reading
 	f2hData_out <=
-		encrypted_cd(7 downto 0) when chanAddr_in = "0000000" and counter3 = 0
-		else encrypted_cd(15 downto 8) when chanAddr_in = "0000000" and counter3 = 1
-		else encrypted_cd(23 downto 16) when chanAddr_in = "0000000" and counter3 = 2
-		else encrypted_cd(31 downto 24) when chanAddr_in = "0000000" and counter3 = 3
-		else ack1_encrypted(7 downto 0) when chanAddr_in = "0000000" and counter3 = 4 and cd_match = '1'
-		else ack1_encrypted(15 downto 8) when chanAddr_in = "0000000" and counter3 = 5 and cd_match = '1'
-		else ack1_encrypted(23 downto 16) when chanAddr_in = "0000000" and counter3 = 6 and cd_match = '1'
-		else ack1_encrypted(31 downto 24) when chanAddr_in = "0000000" and counter3 = 7 and cd_match = '1'
-		else ack1_encrypted(7 downto 0) when chanAddr_in = "0000000" and counter3 = 8 
-		else ack1_encrypted(15 downto 8) when chanAddr_in = "0000000" and counter3 = 9
-		else ack1_encrypted(23 downto 16) when chanAddr_in = "0000000" and counter3 = 10
-		else ack1_encrypted(31 downto 24) when chanAddr_in = "0000000" and counter3 = 11
-		else ack1_encrypted(7 downto 0) when chanAddr_in = "0000000" and counter3 = 12
-		else ack1_encrypted(15 downto 8) when chanAddr_in = "0000000" and counter3 = 13
-		else ack1_encrypted(23 downto 16) when chanAddr_in = "0000000" and counter3 = 14
-		else ack1_encrypted(31 downto 24) when chanAddr_in = "0000000" and counter3 = 15
+		encrypted_cd(7 downto 0) when chanAddr_in = "0000000" and counter3 = 0 -- Sending first byte of encrypted coordinates 
+		else encrypted_cd(15 downto 8) when chanAddr_in = "0000000" and counter3 = 1 -- Sending second byte of encrypted coordinates 
+		else encrypted_cd(23 downto 16) when chanAddr_in = "0000000" and counter3 = 2 -- Sending third byte of encrypted coordinates
+		else encrypted_cd(31 downto 24) when chanAddr_in = "0000000" and counter3 = 3 -- Sending fourth byte of encrypted coordinates
+
+		else ack1_encrypted(7 downto 0) when chanAddr_in = "0000000" and counter3 = 4 and cd_match = '1' -- Sending first byte of encrypted ack1 on matching received coordinates
+		else ack1_encrypted(15 downto 8) when chanAddr_in = "0000000" and counter3 = 5 and cd_match = '1' -- Sending second byte of encrypted ack1 on matching received coordinates
+		else ack1_encrypted(23 downto 16) when chanAddr_in = "0000000" and counter3 = 6 and cd_match = '1' -- Sending third byte of encrypted ack1 on matching received coordinates
+		else ack1_encrypted(31 downto 24) when chanAddr_in = "0000000" and counter3 = 7 and cd_match = '1' -- Sending fourth byte of encrypted ack1 on matching received coordinates
+
+		else ack1_encrypted(7 downto 0) when chanAddr_in = "0000000" and counter3 = 8 -- Sending first byte of encrypted ack1 on decrypting first four bytes of information from board
+		else ack1_encrypted(15 downto 8) when chanAddr_in = "0000000" and counter3 = 9 -- Sending second byte of encrypted ack1 on decrypting first four bytes of informatation from board
+		else ack1_encrypted(23 downto 16) when chanAddr_in = "0000000" and counter3 = 10 -- Sending third byte of encrypted ack1 on decrypting first four bytes of information from board
+		else ack1_encrypted(31 downto 24) when chanAddr_in = "0000000" and counter3 = 11 -- Sending fourth byte of encrypted ack1 on decrypting first four bytes of information from board
+
+		else ack1_encrypted(7 downto 0) when chanAddr_in = "0000000" and counter3 = 12 -- Sending first byte of encrypted coordinates on decrypting next four bytes of information from board 
+		else ack1_encrypted(15 downto 8) when chanAddr_in = "0000000" and counter3 = 13 -- Sending second byte of encrypted coordinates on decrypting next four bytes of information from board
+		else ack1_encrypted(23 downto 16) when chanAddr_in = "0000000" and counter3 = 14 -- Sending third byte of encrypted coordinates on decrypting next four bytes of information from board
+		else ack1_encrypted(31 downto 24) when chanAddr_in = "0000000" and counter3 = 15 -- Sending four byte of encrypted coordinates on decrypting next four bytes of information from board
+
 		else x"AB";
 
 	encrypted_cd2_next(7 downto 0) <= 
