@@ -202,6 +202,9 @@ begin                                                                     --BEGI
 		else ack1_encrypted(31 downto 24) when chanAddr_in = "0000000" and counter3 = 15
 		else x"AB";
 
+	-- read and store encrypted data written by host on channel 1 in encrypted_cd2
+	-- Each time the host writes h2fValid_in becomes '1' and counter2 increases by 1 ensuring that data is stored sequentially in encrypted_cd2.
+	
 	encrypted_cd2_next(7 downto 0) <= 
 		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 0 
 		else encrypted_cd2(7 downto 0);
@@ -218,17 +221,21 @@ begin                                                                     --BEGI
 		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 3
 		else encrypted_cd2(31 downto 24);
 
+	-- set myenable to '1' while board is decrypting and counter2 stays 4
 	myenable_next <= 
 		'1' when counter2 = 4
 		else myenable;
 
+	-- myenable drives the decrypter dec1 for board to decrypt the received encrypted coordinates  
 	dec1 : decrypter
 	port map (clk_in, key, encrypted_cd2, decrypted_cd2, reset1, myenable);
 
+	-- cd_match becomes '1' when board finishes decryption and the decrypted coordinates received from host matches the original coordinates sent.
 	cd_match <=
 		'1' when decrypted_cd2(31 downto 0) = coordinates(31 downto 0)	
 		else '0';
 
+	-- read encrypted Ack2 on channel 1 sent by host sequentially driven by counter2 which increases from 4 to 7 whenever host writes on channel 1
 	ack2_encrypted_next(7 downto 0) <= 
 		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 4 
 		else ack2_encrypted(7 downto 0);
@@ -245,17 +252,21 @@ begin                                                                     --BEGI
 		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 7 
 		else ack2_encrypted(31 downto 24);
 
-	dec2 : decrypter
-	port map (clk_in, key, ack2_encrypted, ack2_decrypted, reset1, myenable2);
-
+	-- myenable2 drives the decrypter dec2 and becomes '1' whenever host finishes writing
 	myenable2_next <= 
 		'1' when counter2 = 8
 		else myenable2;
-
+		
+	-- board is decrypting ack2_encrypted while counter2 stays at 8.
+	dec2 : decrypter
+	port map (clk_in, key, ack2_encrypted, ack2_decrypted, reset1, myenable2);
+	
+	-- signal which becomes '1' as soon as board finishes decryption and the decrypted Ack2 matches the chosen Ack2.
 	cd_match1 <=
 		'1' when ack2_decrypted(31 downto 0) = ack2(31 downto 0)
 		else '0';
 
+	-- 
 	encrypted_info_next(7 downto 0) <=
 		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 8 and cd_match1 = '1'
 		else encrypted_info(7 downto 0);
@@ -358,71 +369,116 @@ begin                                                                     --BEGI
 		counter + 1 when counter4 >= 40
 		else counter;
 	
+	-- for first four directions the lights displayed will remain same for 3 seconds since according to given conditions since amber
+	-- light can only be displayed for the last four directions.
+	
+	
+	-- In direction 0 (north) the light will be red if either track does not exist or is not OK or if there is a train in opposite direction
+	-- (south) or a train is not coming from north.
 	out0_next <=
 		"000001000000010000000100" when reg0(7) = '1' and reg0(6) = '1' and sw_in(0) = '1' and sw_in(4) = '0'
 		else "000000010000000100000001";
 		
+	-- In direction 1 (north-east) the light will be red if either track does not exist or is not OK or if there is a train in opposite direction
+	-- (south-west) or a train is not coming from north-east.
 	out1_next <=
 		"001001000010010000100100" when reg1(7) = '1' and reg1(6) = '1' and sw_in(1) = '1' and sw_in(5) = '0'
 		else "001000010010000100100001";
 	
+	-- In direction 2 (east) the light will be red if either track does not exist or is not OK or if there is a train in opposite direction
+	-- (west) or a train is not coming from north.
 	out2_next <=
 		"010001000100010001000100" when reg2(7) = '1' and reg2(6) = '1' and sw_in(2) = '1' and sw_in(6) = '0'
 		else "010000010100000101000001";
 		
 	
+	-- In direction 3 (south-east) the light will be red if either track does not exist or is not OK or if there is a train in opposite direction
+	-- (north-west) or a train is not coming from north.
 	out3_next <=
 		"011001000110010001100100" when reg3(7) = '1' and reg3(6) = '1' and sw_in(3) = '1' and sw_in(7) = '0'
 		else "011000010110000101100001";
 	
+	
+	-- In direction 4 (south) the lights may be different for the 3 seconds.
+	
+	-- In direction 4(south) light is red for the 1st sec if train is either track does not exist or track is not OK or train is not coming from
+	-- this direction
 	out4_next(7 downto 0) <=
 		"10000001" when reg4(7) = '0' or reg4(6) = '0' or sw_in(4) = '0'
 		else "10000100";
-
+	
+	-- In direction 4(south) light is red for the 2nd sec if train is either track does not exist or track is not OK or train is not coming from
+	-- this direction, amber if train is coming from opposite direction, else it shows green.
 	out4_next(15 downto 8) <=
 		"10000001" when reg4(7) = '0' or reg4(6) = '0' or sw_in(4) = '0'
 		else "10000010" when reg4(7) = '1' and reg4(6) = '1' and sw_in(4) = '1' and sw_in(0) = '1'
 		else "10000100";
 
+	-- In direction 4(south) light is green for the 3rd sec if train is either track exists and track is OK and train is coming from
+	-- this direction, else it shows red.
 	out4_next(23 downto 16) <=
 		"10000100" when reg4(7) = '1' and reg4(6) = '1' and sw_in(4) = '1' and sw_in(0) = '0'
 		else "10000001";
 
+	-- In direction 5 (south-west) the lights may be different for the 3 seconds.
+	
+	-- In direction 5(south-west) light is red for the 1st sec if train is either track does not exist or track is not OK or train is not coming from
+	-- this direction
 	out5_next(7 downto 0) <=
 		"10000001" when reg5(7) = '0' or reg5(6) = '0' or sw_in(5) = '0'
 		else "10000100";
-
+		
+	-- In direction 5(south-west) light is red for the 2nd sec if train is either track does not exist or track is not OK or train is not coming from
+	-- this direction, amber if train is coming from opposite direction, else it shows green.	
 	out5_next(15 downto 8) <=
 		"10000001" when reg5(7) = '0' or reg5(6) = '0' or sw_in(5) = '0'
 		else "10000010" when reg5(7) = '1' and reg5(6) = '1' and sw_in(5) = '1' and sw_in(1) = '1'
 		else "10000100";
 
+	-- In direction 5(south-west) light is green for the 3rd sec if train is either track exists and track is OK and train is coming from
+	-- this direction, else it shows red.
 	out5_next(23 downto 16) <=
 		"10000100" when reg5(7) = '1' and reg5(6) = '1' and sw_in(5) = '1' and sw_in(1) = '0'
 		else "10000001";
 		
+	-- In direction 6 (west) the lights may be different for the 3 seconds.
+	
+	-- In direction 6(west) light is red for the 1st sec if train is either track does not exist or track is not OK or train is not coming from
+	-- this direction
 	out6_next(7 downto 0) <=
 		"10000001" when reg6(7) = '0' or reg6(6) = '0' or sw_in(6) = '0'
 		else "10000100";
 
+	-- In direction 6(west) light is red for the 2nd sec if train is either track does not exist or track is not OK or train is not coming from
+	-- this direction, amber if train is coming from opposite direction, else it shows green.
 	out6_next(15 downto 8) <=
 		"10000001" when reg6(7) = '0' or reg6(6) = '0' or sw_in(6) = '0'
 		else "10000010" when reg6(7) = '1' and reg6(6) = '1' and sw_in(6) = '1' and sw_in(2) = '1'
 		else "10000100";
 
+	-- In direction 6(west) light is green for the 3rd sec if train is either track exists and track is OK and train is coming from
+	-- this direction, else it shows red.
 	out6_next(23 downto 16) <=
 		"10000100" when reg6(7) = '1' and reg6(6) = '1' and sw_in(6) = '1' and sw_in(2) = '0'
 		else "10000001";
 
+	-- In direction 7 (north-west) the lights may be different for the 3 seconds.
+	
+	-- In direction 7(north-west) light is red for the 1st sec if train is either track does not exist or track is not OK or train is not coming from
+	-- this direction
 	out7_next(7 downto 0) <=
 		"10000001" when reg7(7) = '0' or reg7(6) = '0' or sw_in(7) = '0'
 		else "10000100";
 
+	-- In direction 7(north-west) light is red for the 2nd sec if train is either track does not exist or track is not OK or train is not coming from
+	-- this direction, amber if train is coming from opposite direction, else it shows green.
 	out7_next(15 downto 8) <=
 		"10000001" when reg7(7) = '0' or reg7(6) = '0' or sw_in(7) = '0'
 		else "10000010" when reg7(7) = '1' and reg7(6) = '1' and sw_in(7) = '1' and sw_in(3) = '1'
 		else "10000100";
 
+	-- In direction 7(north-west) light is green for the 3rd sec if train is either track exists and track is OK and train is coming from
+	-- this direction, else it shows red.
 	out7_next(23 downto 16) <=
 		"10000100" when reg7(7) = '1' and reg7(6) = '1' and sw_in(7) = '1' and sw_in(3) = '0'
 		else "10000001";
