@@ -170,10 +170,10 @@ begin                                                                     --BEGI
 		counter1 + 1 when (counter3 = 4 and cd_match = '0') or (counter3 = 8 and cd_match1 = '0' ) or (counter3 = 16 and cd_match2 = '0')
 		else (others => '0');
 	cnt_next2 <=
-		counter2 + 1 when h2fValid_in = '1'
+		counter2 + 1 when h2fValid_in = '1' and chanAddr_in = "0000001"
 		else counter2;
 	cnt_next3 <= 
-		counter3 + 1 when f2hReady_in = '1'
+		counter3 + 1 when f2hReady_in = '1' and chanAddr_in = "0000000"
 		else counter3;
 
 	coordinates <=  "00100010000000000000000000000000";
@@ -184,22 +184,26 @@ begin                                                                     --BEGI
 
 	-- Select values to return for each channel when the host is reading
 	f2hData_out <=
-		encrypted_cd(7 downto 0) when chanAddr_in = "0000000" and counter3 = 0
-		else encrypted_cd(15 downto 8) when chanAddr_in = "0000000" and counter3 = 1
-		else encrypted_cd(23 downto 16) when chanAddr_in = "0000000" and counter3 = 2
-		else encrypted_cd(31 downto 24) when chanAddr_in = "0000000" and counter3 = 3
-		else ack1_encrypted(7 downto 0) when chanAddr_in = "0000000" and counter3 = 4 and cd_match = '1'
-		else ack1_encrypted(15 downto 8) when chanAddr_in = "0000000" and counter3 = 5 and cd_match = '1'
-		else ack1_encrypted(23 downto 16) when chanAddr_in = "0000000" and counter3 = 6 and cd_match = '1'
-		else ack1_encrypted(31 downto 24) when chanAddr_in = "0000000" and counter3 = 7 and cd_match = '1'
-		else ack1_encrypted(7 downto 0) when chanAddr_in = "0000000" and counter3 = 8 
-		else ack1_encrypted(15 downto 8) when chanAddr_in = "0000000" and counter3 = 9
-		else ack1_encrypted(23 downto 16) when chanAddr_in = "0000000" and counter3 = 10
-		else ack1_encrypted(31 downto 24) when chanAddr_in = "0000000" and counter3 = 11
-		else ack1_encrypted(7 downto 0) when chanAddr_in = "0000000" and counter3 = 12
-		else ack1_encrypted(15 downto 8) when chanAddr_in = "0000000" and counter3 = 13
-		else ack1_encrypted(23 downto 16) when chanAddr_in = "0000000" and counter3 = 14
-		else ack1_encrypted(31 downto 24) when chanAddr_in = "0000000" and counter3 = 15
+		encrypted_cd(7 downto 0) when chanAddr_in = "0000000" and counter3 = 0 -- Sending first byte of encrypted coordinates 
+		else encrypted_cd(15 downto 8) when chanAddr_in = "0000000" and counter3 = 1 -- Sending second byte of encrypted coordinates 
+		else encrypted_cd(23 downto 16) when chanAddr_in = "0000000" and counter3 = 2 -- Sending third byte of encrypted coordinates
+		else encrypted_cd(31 downto 24) when chanAddr_in = "0000000" and counter3 = 3 -- Sending fourth byte of encrypted coordinates
+
+		else ack1_encrypted(7 downto 0) when chanAddr_in = "0000000" and counter3 = 4 and cd_match = '1' -- Sending first byte of encrypted ack1 on matching received coordinates
+		else ack1_encrypted(15 downto 8) when chanAddr_in = "0000000" and counter3 = 5 and cd_match = '1' -- Sending second byte of encrypted ack1 on matching received coordinates
+		else ack1_encrypted(23 downto 16) when chanAddr_in = "0000000" and counter3 = 6 and cd_match = '1' -- Sending third byte of encrypted ack1 on matching received coordinates
+		else ack1_encrypted(31 downto 24) when chanAddr_in = "0000000" and counter3 = 7 and cd_match = '1' -- Sending fourth byte of encrypted ack1 on matching received coordinates
+
+		else ack1_encrypted(7 downto 0) when chanAddr_in = "0000000" and counter3 = 8 -- Sending first byte of encrypted ack1 on decrypting first four bytes of information from board
+		else ack1_encrypted(15 downto 8) when chanAddr_in = "0000000" and counter3 = 9 -- Sending second byte of encrypted ack1 on decrypting first four bytes of informatation from board
+		else ack1_encrypted(23 downto 16) when chanAddr_in = "0000000" and counter3 = 10 -- Sending third byte of encrypted ack1 on decrypting first four bytes of information from board
+		else ack1_encrypted(31 downto 24) when chanAddr_in = "0000000" and counter3 = 11 -- Sending fourth byte of encrypted ack1 on decrypting first four bytes of information from board
+
+		else ack1_encrypted(7 downto 0) when chanAddr_in = "0000000" and counter3 = 12 -- Sending first byte of encrypted coordinates on decrypting next four bytes of information from board 
+		else ack1_encrypted(15 downto 8) when chanAddr_in = "0000000" and counter3 = 13 -- Sending second byte of encrypted coordinates on decrypting next four bytes of information from board
+		else ack1_encrypted(23 downto 16) when chanAddr_in = "0000000" and counter3 = 14 -- Sending third byte of encrypted coordinates on decrypting next four bytes of information from board
+		else ack1_encrypted(31 downto 24) when chanAddr_in = "0000000" and counter3 = 15 -- Sending four byte of encrypted coordinates on decrypting next four bytes of information from board
+
 		else x"AB";
 
 	-- read and store encrypted data written by host on channel 1 in encrypted_cd2
@@ -207,24 +211,24 @@ begin                                                                     --BEGI
 	
 	encrypted_cd2_next(7 downto 0) <= 
 		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 0 
-		else encrypted_cd2(7 downto 0);
+		else encrypted_cd2(7 downto 0); -- First byte of Encrypted coordinates being read from host
 
 	encrypted_cd2_next(15 downto 8) <= 
 		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 1
-		else encrypted_cd2(15 downto 8);
+		else encrypted_cd2(15 downto 8); -- Second byte of Encrypted coordinates being read from host 
 
 	encrypted_cd2_next(23 downto 16) <= 
 		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 2
-		else encrypted_cd2(23 downto 16);
+		else encrypted_cd2(23 downto 16); -- Third byte of Encrypted coordinates being read from host
 
 	encrypted_cd2_next(31 downto 24) <= 
 		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 3
-		else encrypted_cd2(31 downto 24);
+		else encrypted_cd2(31 downto 24); --  Fourth byte of Encrypted coordinates being read from host
 
 	-- set myenable to '1' while board is decrypting and counter2 stays 4
 	myenable_next <= 
 		'1' when counter2 = 4
-		else myenable;
+		else myenable; 
 
 	-- myenable drives the decrypter dec1 for board to decrypt the received encrypted coordinates  
 	dec1 : decrypter
@@ -425,63 +429,63 @@ begin                                                                     --BEGI
 	-- In direction 5(south-west) light is red for the 1st sec if train is either track does not exist or track is not OK or train is not coming from
 	-- this direction
 	out5_next(7 downto 0) <=
-		"10000001" when reg5(7) = '0' or reg5(6) = '0' or sw_in(5) = '0'
-		else "10000100";
-		
+		"10100001" when reg5(7) = '0' or reg5(6) = '0' or sw_in(5) = '0'
+		else "10100100";
 	-- In direction 5(south-west) light is red for the 2nd sec if train is either track does not exist or track is not OK or train is not coming from
 	-- this direction, amber if train is coming from opposite direction, else it shows green.	
+		
 	out5_next(15 downto 8) <=
-		"10000001" when reg5(7) = '0' or reg5(6) = '0' or sw_in(5) = '0'
-		else "10000010" when reg5(7) = '1' and reg5(6) = '1' and sw_in(5) = '1' and sw_in(1) = '1'
-		else "10000100";
+		"10100001" when reg5(7) = '0' or reg5(6) = '0' or sw_in(5) = '0'
+		else "10100010" when reg5(7) = '1' and reg5(6) = '1' and sw_in(5) = '1' and sw_in(1) = '1'
+		else "10100100";
 
 	-- In direction 5(south-west) light is green for the 3rd sec if train is either track exists and track is OK and train is coming from
 	-- this direction, else it shows red.
 	out5_next(23 downto 16) <=
-		"10000100" when reg5(7) = '1' and reg5(6) = '1' and sw_in(5) = '1' and sw_in(1) = '0'
-		else "10000001";
+		"10100100" when reg5(7) = '1' and reg5(6) = '1' and sw_in(5) = '1' and sw_in(1) = '0'
+		else "10100001";
 		
 	-- In direction 6 (west) the lights may be different for the 3 seconds.
 	
 	-- In direction 6(west) light is red for the 1st sec if train is either track does not exist or track is not OK or train is not coming from
 	-- this direction
 	out6_next(7 downto 0) <=
-		"10000001" when reg6(7) = '0' or reg6(6) = '0' or sw_in(6) = '0'
-		else "10000100";
+		"11000001" when reg6(7) = '0' or reg6(6) = '0' or sw_in(6) = '0'
+		else "11000100";
 
 	-- In direction 6(west) light is red for the 2nd sec if train is either track does not exist or track is not OK or train is not coming from
 	-- this direction, amber if train is coming from opposite direction, else it shows green.
 	out6_next(15 downto 8) <=
-		"10000001" when reg6(7) = '0' or reg6(6) = '0' or sw_in(6) = '0'
-		else "10000010" when reg6(7) = '1' and reg6(6) = '1' and sw_in(6) = '1' and sw_in(2) = '1'
-		else "10000100";
+		"11000001" when reg6(7) = '0' or reg6(6) = '0' or sw_in(6) = '0'
+		else "11000010" when reg6(7) = '1' and reg6(6) = '1' and sw_in(6) = '1' and sw_in(2) = '1'
+		else "11000100";
 
 	-- In direction 6(west) light is green for the 3rd sec if train is either track exists and track is OK and train is coming from
 	-- this direction, else it shows red.
 	out6_next(23 downto 16) <=
-		"10000100" when reg6(7) = '1' and reg6(6) = '1' and sw_in(6) = '1' and sw_in(2) = '0'
-		else "10000001";
+		"11000100" when reg6(7) = '1' and reg6(6) = '1' and sw_in(6) = '1' and sw_in(2) = '0'
+		else "11000001";
 
 	-- In direction 7 (north-west) the lights may be different for the 3 seconds.
 	
 	-- In direction 7(north-west) light is red for the 1st sec if train is either track does not exist or track is not OK or train is not coming from
 	-- this direction
 	out7_next(7 downto 0) <=
-		"10000001" when reg7(7) = '0' or reg7(6) = '0' or sw_in(7) = '0'
-		else "10000100";
+		"11100001" when reg7(7) = '0' or reg7(6) = '0' or sw_in(7) = '0'
+		else "11100100";
 
 	-- In direction 7(north-west) light is red for the 2nd sec if train is either track does not exist or track is not OK or train is not coming from
 	-- this direction, amber if train is coming from opposite direction, else it shows green.
 	out7_next(15 downto 8) <=
-		"10000001" when reg7(7) = '0' or reg7(6) = '0' or sw_in(7) = '0'
-		else "10000010" when reg7(7) = '1' and reg7(6) = '1' and sw_in(7) = '1' and sw_in(3) = '1'
-		else "10000100";
+		"11100001" when reg7(7) = '0' or reg7(6) = '0' or sw_in(7) = '0'
+		else "11100010" when reg7(7) = '1' and reg7(6) = '1' and sw_in(7) = '1' and sw_in(3) = '1'
+		else "11100100";
 
 	-- In direction 7(north-west) light is green for the 3rd sec if train is either track exists and track is OK and train is coming from
 	-- this direction, else it shows red.
 	out7_next(23 downto 16) <=
-		"10000100" when reg7(7) = '1' and reg7(6) = '1' and sw_in(7) = '1' and sw_in(3) = '0'
-		else "10000001";
+		"11100100" when reg7(7) = '1' and reg7(6) = '1' and sw_in(7) = '1' and sw_in(3) = '0'
+		else "11100001";
 
 	-- LEDs and 7-seg display
 	with counter select led_out1_next <=
