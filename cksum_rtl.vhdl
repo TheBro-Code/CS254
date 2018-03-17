@@ -22,7 +22,7 @@ use ieee.std_logic_unsigned.all;
 
 architecture rtl of swled is
 	-- Flags for display on the 7-seg decimal points
-	signal flags                   : std_logic_vector(3 downto 0);
+	signal flags  : std_logic_vector(3 downto 0);
 
 	COMPONENT encrypter
 	Port ( clock : in  STD_LOGIC; -- clock
@@ -87,6 +87,8 @@ architecture rtl of swled is
 	signal myenable4,myenable4_next : std_logic := '0'; -- Enable for decrypting next 4 bytes of encrypted information from host
 	signal myenable5,myenable5_next : std_logic := '0'; -- Enable for decrypting encrypted ack2
 	signal reset1 : std_logic := '0'; -- common reset pin for all encrypters and decrypters
+	signal read_channel : std_logic_vector(6 downto 0) := "1000100"; -- Channel from which host reads
+	signal write_channel : std_logic_vector(6 downto 0) := "1000101"; -- Channel to which host write
  
 	
 begin                                                                     --BEGIN_SNIPPET(registers)
@@ -165,15 +167,18 @@ begin                                                                     --BEGI
 	-- Assert that there's always data for reading, and always room for writing
 	f2hValid_out <= '1';
 	h2fReady_out <= '1';
+ 
+	read_channel <= "1000100"; -- Channel from which host reads
+	write_channel <= "1000101"; -- Channel to which host writes
 
 	cnt_next1 <=
 		counter1 + 1 when (counter3 = 4 and cd_match = '0') or (counter3 = 8 and cd_match1 = '0' ) or (counter3 = 16 and cd_match2 = '0')
 		else (others => '0');
 	cnt_next2 <=
-		counter2 + 1 when h2fValid_in = '1' and chanAddr_in = "0000001"
+		counter2 + 1 when h2fValid_in = '1' and chanAddr_in = write_channel
 		else counter2;
 	cnt_next3 <= 
-		counter3 + 1 when f2hReady_in = '1' and chanAddr_in = "0000000"
+		counter3 + 1 when f2hReady_in = '1' and chanAddr_in = read_channel
 		else counter3;
 
 	coordinates <=  "00100010000000000000000000000000";
@@ -184,25 +189,25 @@ begin                                                                     --BEGI
 
 	-- Select values to return for each channel when the host is reading
 	f2hData_out <=
-		encrypted_cd(7 downto 0) when chanAddr_in = "0000000" and counter3 = 0 -- Sending first byte of encrypted coordinates 
-		else encrypted_cd(15 downto 8) when chanAddr_in = "0000000" and counter3 = 1 -- Sending second byte of encrypted coordinates 
-		else encrypted_cd(23 downto 16) when chanAddr_in = "0000000" and counter3 = 2 -- Sending third byte of encrypted coordinates
-		else encrypted_cd(31 downto 24) when chanAddr_in = "0000000" and counter3 = 3 -- Sending fourth byte of encrypted coordinates
+		encrypted_cd(7 downto 0) when chanAddr_in = read_channel and counter3 = 0 -- Sending first byte of encrypted coordinates 
+		else encrypted_cd(15 downto 8) when chanAddr_in = read_channel and counter3 = 1 -- Sending second byte of encrypted coordinates 
+		else encrypted_cd(23 downto 16) when chanAddr_in = read_channel and counter3 = 2 -- Sending third byte of encrypted coordinates
+		else encrypted_cd(31 downto 24) when chanAddr_in = read_channel and counter3 = 3 -- Sending fourth byte of encrypted coordinates
 
-		else ack1_encrypted(7 downto 0) when chanAddr_in = "0000000" and counter3 = 4 and cd_match = '1' -- Sending first byte of encrypted ack1 on matching received coordinates
-		else ack1_encrypted(15 downto 8) when chanAddr_in = "0000000" and counter3 = 5 and cd_match = '1' -- Sending second byte of encrypted ack1 on matching received coordinates
-		else ack1_encrypted(23 downto 16) when chanAddr_in = "0000000" and counter3 = 6 and cd_match = '1' -- Sending third byte of encrypted ack1 on matching received coordinates
-		else ack1_encrypted(31 downto 24) when chanAddr_in = "0000000" and counter3 = 7 and cd_match = '1' -- Sending fourth byte of encrypted ack1 on matching received coordinates
+		else ack1_encrypted(7 downto 0) when chanAddr_in = read_channel and counter3 = 4 and cd_match = '1' -- Sending first byte of encrypted ack1 on matching received coordinates
+		else ack1_encrypted(15 downto 8) when chanAddr_in = read_channel and counter3 = 5 and cd_match = '1' -- Sending second byte of encrypted ack1 on matching received coordinates
+		else ack1_encrypted(23 downto 16) when chanAddr_in = read_channel and counter3 = 6 and cd_match = '1' -- Sending third byte of encrypted ack1 on matching received coordinates
+		else ack1_encrypted(31 downto 24) when chanAddr_in = read_channel and counter3 = 7 and cd_match = '1' -- Sending fourth byte of encrypted ack1 on matching received coordinates
 
-		else ack1_encrypted(7 downto 0) when chanAddr_in = "0000000" and counter3 = 8 -- Sending first byte of encrypted ack1 on decrypting first four bytes of information from board
-		else ack1_encrypted(15 downto 8) when chanAddr_in = "0000000" and counter3 = 9 -- Sending second byte of encrypted ack1 on decrypting first four bytes of informatation from board
-		else ack1_encrypted(23 downto 16) when chanAddr_in = "0000000" and counter3 = 10 -- Sending third byte of encrypted ack1 on decrypting first four bytes of information from board
-		else ack1_encrypted(31 downto 24) when chanAddr_in = "0000000" and counter3 = 11 -- Sending fourth byte of encrypted ack1 on decrypting first four bytes of information from board
+		else ack1_encrypted(7 downto 0) when chanAddr_in = read_channel and counter3 = 8 -- Sending first byte of encrypted ack1 on decrypting first four bytes of information from board
+		else ack1_encrypted(15 downto 8) when chanAddr_in = read_channel and counter3 = 9 -- Sending second byte of encrypted ack1 on decrypting first four bytes of informatation from board
+		else ack1_encrypted(23 downto 16) when chanAddr_in = read_channel and counter3 = 10 -- Sending third byte of encrypted ack1 on decrypting first four bytes of information from board
+		else ack1_encrypted(31 downto 24) when chanAddr_in = read_channel and counter3 = 11 -- Sending fourth byte of encrypted ack1 on decrypting first four bytes of information from board
 
-		else ack1_encrypted(7 downto 0) when chanAddr_in = "0000000" and counter3 = 12 -- Sending first byte of encrypted coordinates on decrypting next four bytes of information from board 
-		else ack1_encrypted(15 downto 8) when chanAddr_in = "0000000" and counter3 = 13 -- Sending second byte of encrypted coordinates on decrypting next four bytes of information from board
-		else ack1_encrypted(23 downto 16) when chanAddr_in = "0000000" and counter3 = 14 -- Sending third byte of encrypted coordinates on decrypting next four bytes of information from board
-		else ack1_encrypted(31 downto 24) when chanAddr_in = "0000000" and counter3 = 15 -- Sending four byte of encrypted coordinates on decrypting next four bytes of information from board
+		else ack1_encrypted(7 downto 0) when chanAddr_in = read_channel and counter3 = 12 -- Sending first byte of encrypted coordinates on decrypting next four bytes of information from board 
+		else ack1_encrypted(15 downto 8) when chanAddr_in = read_channel and counter3 = 13 -- Sending second byte of encrypted coordinates on decrypting next four bytes of information from board
+		else ack1_encrypted(23 downto 16) when chanAddr_in = read_channel and counter3 = 14 -- Sending third byte of encrypted coordinates on decrypting next four bytes of information from board
+		else ack1_encrypted(31 downto 24) when chanAddr_in = read_channel and counter3 = 15 -- Sending four byte of encrypted coordinates on decrypting next four bytes of information from board
 
 		else x"AB";
 
@@ -210,19 +215,19 @@ begin                                                                     --BEGI
 	-- Each time the host writes h2fValid_in becomes '1' and counter2 increases by 1 ensuring that data is stored sequentially in encrypted_cd2.
 	
 	encrypted_cd2_next(7 downto 0) <= 
-		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 0 
+		h2fData_in when chanAddr_in = write_channel and h2fValid_in = '1' and counter2 = 0 
 		else encrypted_cd2(7 downto 0); -- First byte of Encrypted coordinates being read from host
 
 	encrypted_cd2_next(15 downto 8) <= 
-		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 1
+		h2fData_in when chanAddr_in = write_channel and h2fValid_in = '1' and counter2 = 1
 		else encrypted_cd2(15 downto 8); -- Second byte of Encrypted coordinates being read from host 
 
 	encrypted_cd2_next(23 downto 16) <= 
-		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 2
+		h2fData_in when chanAddr_in = write_channel and h2fValid_in = '1' and counter2 = 2
 		else encrypted_cd2(23 downto 16); -- Third byte of Encrypted coordinates being read from host
 
 	encrypted_cd2_next(31 downto 24) <= 
-		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 3
+		h2fData_in when chanAddr_in = write_channel and h2fValid_in = '1' and counter2 = 3
 		else encrypted_cd2(31 downto 24); --  Fourth byte of Encrypted coordinates being read from host
 
 	-- set myenable to '1' while board is decrypting and counter2 stays 4
@@ -241,19 +246,19 @@ begin                                                                     --BEGI
 
 	-- read encrypted Ack2 on channel 1 sent by host sequentially driven by counter2 which increases from 4 to 7 whenever host writes on channel 1
 	ack2_encrypted_next(7 downto 0) <= 
-		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 4 
+		h2fData_in when chanAddr_in = write_channel and h2fValid_in = '1' and counter2 = 4 
 		else ack2_encrypted(7 downto 0);
 
 	ack2_encrypted_next(15 downto 8) <= 
-		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 5 
+		h2fData_in when chanAddr_in = write_channel and h2fValid_in = '1' and counter2 = 5 
 		else ack2_encrypted(15 downto 8);
     
     ack2_encrypted_next(23 downto 16) <= 
-		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 6 
+		h2fData_in when chanAddr_in = write_channel and h2fValid_in = '1' and counter2 = 6 
 		else ack2_encrypted(23 downto 16);
     
     ack2_encrypted_next(31 downto 24) <= 
-		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 7 
+		h2fData_in when chanAddr_in = write_channel and h2fValid_in = '1' and counter2 = 7 
 		else ack2_encrypted(31 downto 24);
 
 	-- myenable2 drives the decrypter dec2 and becomes '1' whenever host finishes writing
@@ -272,16 +277,16 @@ begin                                                                     --BEGI
 
 	-- 
 	encrypted_info_next(7 downto 0) <=
-		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 8 and cd_match1 = '1'
+		h2fData_in when chanAddr_in = write_channel and h2fValid_in = '1' and counter2 = 8 and cd_match1 = '1'
 		else encrypted_info(7 downto 0);
 	encrypted_info_next(15 downto 8) <=
-		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 9 and cd_match1 = '1'
+		h2fData_in when chanAddr_in = write_channel and h2fValid_in = '1' and counter2 = 9 and cd_match1 = '1'
 		else encrypted_info(15 downto 8);
 	encrypted_info_next(23 downto 16) <=
-		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 10 and cd_match1 = '1'
+		h2fData_in when chanAddr_in = write_channel and h2fValid_in = '1' and counter2 = 10 and cd_match1 = '1'
 		else encrypted_info(23 downto 16);
 	encrypted_info_next(31 downto 24) <=
-		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 11 and cd_match1 = '1'
+		h2fData_in when chanAddr_in = write_channel and h2fValid_in = '1' and counter2 = 11 and cd_match1 = '1'
 		else encrypted_info(31 downto 24);
 
 	myenable3_next <= 
@@ -292,16 +297,16 @@ begin                                                                     --BEGI
 	port map (clk_in, key, encrypted_info(31 downto 0), decrypted_info(31 downto 0), reset1, myenable3);
 
 	encrypted_info_next(39 downto 32) <=
-		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 12
+		h2fData_in when chanAddr_in = write_channel and h2fValid_in = '1' and counter2 = 12
 		else encrypted_info(39 downto 32);
 	encrypted_info_next(47 downto 40) <=
-		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 13
+		h2fData_in when chanAddr_in = write_channel and h2fValid_in = '1' and counter2 = 13
 		else encrypted_info(47 downto 40);
 	encrypted_info_next(55 downto 48) <=
-		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 14
+		h2fData_in when chanAddr_in = write_channel and h2fValid_in = '1' and counter2 = 14
 		else encrypted_info(55 downto 48);
 	encrypted_info_next(63 downto 56) <=
-		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 15
+		h2fData_in when chanAddr_in = write_channel and h2fValid_in = '1' and counter2 = 15
 		else encrypted_info(63 downto 56);
 		
 	myenable4_next <= 
@@ -312,19 +317,19 @@ begin                                                                     --BEGI
 	port map (clk_in, key, encrypted_info(63 downto 32), decrypted_info(63 downto 32), reset1, myenable4);
 
 	ack2_encrypted_next1(7 downto 0) <= 
-		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 16 
+		h2fData_in when chanAddr_in = write_channel and h2fValid_in = '1' and counter2 = 16 
 		else ack2_encrypted1(7 downto 0);
 
 	ack2_encrypted_next1(15 downto 8) <= 
-		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 17
+		h2fData_in when chanAddr_in = write_channel and h2fValid_in = '1' and counter2 = 17
 		else ack2_encrypted1(15 downto 8);
     
     ack2_encrypted_next1(23 downto 16) <= 
-		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 18
+		h2fData_in when chanAddr_in = write_channel and h2fValid_in = '1' and counter2 = 18
 		else ack2_encrypted1(23 downto 16);
     
     ack2_encrypted_next1(31 downto 24) <= 
-		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 19
+		h2fData_in when chanAddr_in = write_channel and h2fValid_in = '1' and counter2 = 19
 		else ack2_encrypted1(31 downto 24);
 
 	myenable5_next <= 
