@@ -26,6 +26,7 @@
 #include <argtable2.h>
 #include <time.h>
 #include <readline/readline.h>
+#include <unistd.h>
 #include <readline/history.h>
 #ifdef WIN32
 #include <Windows.h>
