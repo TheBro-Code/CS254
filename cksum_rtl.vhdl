@@ -208,23 +208,23 @@ begin                                                                     --BEGI
 
 	encrypted_cd2_next(7 downto 0) <= 
 		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 0 
-		else encrypted_cd2(7 downto 0);
+		else encrypted_cd2(7 downto 0); -- First byte of Encrypted coordinates being read from host
 
 	encrypted_cd2_next(15 downto 8) <= 
 		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 1
-		else encrypted_cd2(15 downto 8);
+		else encrypted_cd2(15 downto 8); -- Second byte of Encrypted coordinates being read from host 
 
 	encrypted_cd2_next(23 downto 16) <= 
 		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 2
-		else encrypted_cd2(23 downto 16);
+		else encrypted_cd2(23 downto 16); -- Third byte of Encrypted coordinates being read from host
 
 	encrypted_cd2_next(31 downto 24) <= 
 		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 3
-		else encrypted_cd2(31 downto 24);
+		else encrypted_cd2(31 downto 24); --  Fourth byte of Encrypted coordinates being read from host
 
 	myenable_next <= 
 		'1' when counter2 = 4
-		else myenable;
+		else myenable; 
 
 	dec1 : decrypter
 	port map (clk_in, key, encrypted_cd2, decrypted_cd2, reset1, myenable);
