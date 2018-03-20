@@ -19,12 +19,13 @@ We have made changes(and included them in the submission) in the following files
 4) decrypter.vhdl
 5) hdlmake.cfg (in the same directory as cksum_rtl.vhdl)
 6) board.ucf has not been changed
+7) debouncer.vhd (given in the earlier labs)
 
 So in order to run our code, replace the following files 
 
 1) main.c in ~/20140524/makestuff/apps/flcli.
 2) cksum_rtl.vhdl, hdlmake.cfg in ~/20140524/makestuff/hdlmake/apps/makestuff/swled/cksum/vhdl/.
-3) Also include encrypter.vhdl and decrypter.vhdl in ~/20140524/makestuff/hdlmake/apps/makestuff/swled/cksum/vhdl/
+3) Also include encrypter.vhdl,debouncer.vhd and decrypter.vhdl in ~/20140524/makestuff/hdlmake/apps/makestuff/swled/cksum/vhdl/
 
 After that run these commands in order
 

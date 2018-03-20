@@ -42,6 +42,12 @@ architecture rtl of swled is
            enable : in  STD_LOGIC); -- enable wire
     END COMPONENT;
 
+    -- COMPONENT debouncer
+    -- Port (clk : in  STD_LOGIC;
+    --        button : in  STD_LOGIC;
+    --        button_deb : out  STD_LOGIC);
+    -- END COMPONENT;
+
 	-- Registers implementing the channels
 	signal reg0, reg0_next : std_logic_vector(7 downto 0)  := (others => '0');
 	signal reg1, reg1_next : std_logic_vector(7 downto 0)  := (others => '0');
@@ -51,6 +57,10 @@ architecture rtl of swled is
 	signal reg5, reg5_next : std_logic_vector(7 downto 0)  := (others => '0');
 	signal reg6, reg6_next : std_logic_vector(7 downto 0)  := (others => '0');
 	signal reg7, reg7_next : std_logic_vector(7 downto 0)  := (others => '0');
+
+	-- extra signal included for mapping reset to the board
+
+	-- signal debounced_reset : std_logic := '0';
 
 	-- Output Registers
 	signal out0, out0_next : std_logic_vector(23 downto 0)  := (others => '0');
@@ -94,6 +104,7 @@ begin                                                                     --BEGI
 	process(clk_in)
 	begin
 		if ( rising_edge(clk_in) ) then
+			-- if( debounced_reset = '1' -- reset the circuit
 			if ( reset_in = '1' -- reset the circuit
 				or counter = 1536000000 -- 32 seconds (24 seconds for displaying outputs and 8 seconds wait before next input)
 				or counter1 = "001011011100011011000000000000000000")  then -- 256 seconds for timeout
@@ -162,6 +173,9 @@ begin                                                                     --BEGI
 		end if;
 	end process;
 
+	-- deb : debouncer
+	-- port map (clk_in,reset_in,debounced_reset);
+
 	-- Assert that there's always data for reading, and always room for writing
 	f2hValid_out <= '1';
 	h2fReady_out <= '1';
@@ -228,7 +242,7 @@ begin                                                                     --BEGI
 	-- set myenable to '1' while board is decrypting and counter2 stays 4
 	myenable_next <= 
 		'1' when counter2 = 4
-		else myenable; 
+		else myenable;
 
 	-- myenable drives the decrypter dec1 for board to decrypt the received encrypted coordinates  
 	dec1 : decrypter
@@ -270,27 +284,30 @@ begin                                                                     --BEGI
 		'1' when ack2_decrypted(31 downto 0) = ack2(31 downto 0)
 		else '0';
 
-	-- 
+	-- read encrypted information sent by the host sequentially. 
 	encrypted_info_next(7 downto 0) <=
-		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 8 and cd_match1 = '1'
+		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 8 and cd_match1 = '1' -- read first byte of encrypted_info
 		else encrypted_info(7 downto 0);
 	encrypted_info_next(15 downto 8) <=
-		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 9 and cd_match1 = '1'
+		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 9 and cd_match1 = '1' -- read second byte of encrypted_info
 		else encrypted_info(15 downto 8);
 	encrypted_info_next(23 downto 16) <=
-		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 10 and cd_match1 = '1'
+		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 10 and cd_match1 = '1' -- read third byte of encrypted_info
 		else encrypted_info(23 downto 16);
 	encrypted_info_next(31 downto 24) <=
-		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 11 and cd_match1 = '1'
+		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 11 and cd_match1 = '1' -- read fourth byte of encrypted_info
 		else encrypted_info(31 downto 24);
 
+	-- myenable3 drives decrypter dec3 and becomes 1 when host has sent  first 4 bytes of information
 	myenable3_next <= 
 		'1' when counter2 = 12
 		else myenable3;
 
+	-- board decrypts the info while host waits
 	dec3 : decrypter
 	port map (clk_in, key, encrypted_info(31 downto 0), decrypted_info(31 downto 0), reset1, myenable3);
 
+	-- board reads next 4 bytes of information from channel 1 
 	encrypted_info_next(39 downto 32) <=
 		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 12
 		else encrypted_info(39 downto 32);
@@ -304,13 +321,16 @@ begin                                                                     --BEGI
 		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 15
 		else encrypted_info(63 downto 56);
 		
+	-- myenable4 drives decrypter dec4 and becomes 1 when host has sent ack2 and counter2 becomes 16
 	myenable4_next <= 
 		'1' when counter2 = 16
 		else myenable4;
 
+	-- myenable4 becomes 1 and drives board to decrypt the ack2 received
 	dec4 : decrypter
 	port map (clk_in, key, encrypted_info(63 downto 32), decrypted_info(63 downto 32), reset1, myenable4);
 
+	-- 
 	ack2_encrypted_next1(7 downto 0) <= 
 		h2fData_in when chanAddr_in = "0000001" and h2fValid_in = '1' and counter2 = 16 
 		else ack2_encrypted1(7 downto 0);

@@ -22,6 +22,8 @@ NET "fx2Clk_in"       LOC="C10"  | IOSTANDARD=LVTTL;   # IFCLK
 NET "fx2Addr_out<0>"  LOC="A14"  | IOSTANDARD=LVTTL;   # PA4/FIFOADR0
 NET "fx2Addr_out<1>"  LOC="B14"  | IOSTANDARD=LVTTL;   # PA5/FIFOADR1
 
+# NET "reset"  LOC="B14"  | IOSTANDARD=LVTTL;
+
 NET "fx2Data_io<0>"   LOC="A2"   | IOSTANDARD=LVTTL;   # PB0/FD0
 NET "fx2Data_io<1>"   LOC="D6"   | IOSTANDARD=LVTTL;   # PB1/FD1
 NET "fx2Data_io<2>"   LOC="C6"   | IOSTANDARD=LVTTL;   # PB2/FD2
