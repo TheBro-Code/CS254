@@ -36,6 +36,7 @@
 
 bool sigIsRaised(void);
 void sigRegisterHandler(void);
+int chanNumber = 0;
 
 static const char *ptr;
 static bool enableBenchmarking = false;
@@ -770,57 +771,165 @@ void generateSignalData(char* finalAnswer,const char *filename, int x, int y){
 }
 // main function
 static void simulateTrack(struct FLContext *handle, const char **error){
-	int i = 0, xCd, yCd;
+	int xCd, yCd;
 	struct Buffer dataFromFPGA = {0,};
 	BufferStatus bStatus;
 	FLStatus fStatus;
 	bStatus = bufInitialise(&dataFromFPGA, 1024, 0x00, error);
 	size_t oldLength = dataFromFPGA.length;
+	// if (chanNumber != 0) {
+	// 	while(calcChecksum(dataFromFPGA.data + oldLength, 1) != 105) {
+	// 		fStatus = flReadChannel(handle, 2*chanNumber, 1, dataFromFPGA.data + oldLength, error);
+	// 	}
+	// 	sleep(0.001);
+	// }
+	fStatus = flReadChannel(handle, 2*chanNumber, 1, dataFromFPGA.data + oldLength, error);
+	oldLength = dataFromFPGA.length;
 	bool done = false;
+	bool isUpPressed = calcChecksum(dataFromFPGA.data + oldLength, 1)==105;
+	printf("%d %d \n",calcChecksum(dataFromFPGA.data + oldLength, 1), chanNumber);
 	// loop to find channel
-	while (!done) {
-			char encryptedCds[33]; // char array to store the incoming encrypted coordinates
-			encryptedCds[32] = '\0';
-			// fill the encryptedCds array
-			for(int j = 0;j<4;j++){
-				fStatus = flReadChannel(handle, 2*i, 1, dataFromFPGA.data + oldLength, error);
-				oldLength = dataFromFPGA.length;
-				addChars(encryptedCds, calcChecksum(dataFromFPGA.data + oldLength, 1),3-j);
-			}
-			printf("Read encrypted coordinates : %s\n", encryptedCds);
-			char receivedCds[33]; // char array to store decrypted coordinates
-			decryptText(encryptedCds,key,receivedCds); // fill the receivedCds array
-			printf("Received coordinates : %s\n", receivedCds);
-			char reencryptedCds[33]; // char array to encrypt the receivedCds array
-			xCd = 8*(receivedCds[0]-48) + 4*(receivedCds[1]-48) + 2*(receivedCds[2]-48) + (receivedCds[3]-48); // get xCd from the data received
-			yCd = 8*(receivedCds[4]-48) + 4*(receivedCds[5]-48) + 2*(receivedCds[6]-48) + (receivedCds[7]-48); // get yCd from the data received
-			printf("X coordinate : %d\n", xCd);
-			printf("Y coordinate : %d\n", yCd);
-			encryptText(receivedCds,key,reencryptedCds); // encrypt the receivedCds
-			printf("Reencrypted received coordinates : %s\n", reencryptedCds);
-			for(int j = 0;j<4;j++){
-				uint8 y = 0;
-				int two_power = 128;
-				for(int k=0;k<8;k++)
-				{
-					y += ((reencryptedCds[8*(3-j)+k]-48)*two_power);
-					two_power/=2;
+	if(!isUpPressed){
+		chanNumber = 0;
+		while (!done) {
+				char encryptedCds[33]; // char array to store the incoming encrypted coordinates
+				encryptedCds[32] = '\0';
+				// fill the encryptedCds array
+				if(chanNumber == 0){
+					for(int j = 0;j<3;j++){
+						addChars(encryptedCds, calcChecksum(dataFromFPGA.data + oldLength, 1),3-j);
+						fStatus = flReadChannel(handle, 2*chanNumber, 1, dataFromFPGA.data + oldLength, error);
+						oldLength = dataFromFPGA.length;
+					}
+					addChars(encryptedCds, calcChecksum(dataFromFPGA.data + oldLength, 1),0);
 				}
-				fStatus = flWriteChannel(handle, 2*i+1, 1, &y, error);
+				else{
+					for(int j = 0;j<4;j++){
+						fStatus = flReadChannel(handle, 2*chanNumber, 1, dataFromFPGA.data + oldLength, error);
+						oldLength = dataFromFPGA.length;
+						addChars(encryptedCds, calcChecksum(dataFromFPGA.data + oldLength, 1),3-j);
+					}
+				}
+				printf("Read encrypted coordinates : %s\n", encryptedCds);
+				char receivedCds[33]; // char array to store decrypted coordinates
+				decryptText(encryptedCds,key,receivedCds); // fill the receivedCds array
+				printf("Received coordinates : %s\n", receivedCds);
+				char reencryptedCds[33]; // char array to encrypt the receivedCds array
+				xCd = 8*(receivedCds[0]-48) + 4*(receivedCds[1]-48) + 2*(receivedCds[2]-48) + (receivedCds[3]-48); // get xCd from the data received
+				yCd = 8*(receivedCds[4]-48) + 4*(receivedCds[5]-48) + 2*(receivedCds[6]-48) + (receivedCds[7]-48); // get yCd from the data received
+				printf("X coordinate : %d\n", xCd);
+				printf("Y coordinate : %d\n", yCd);
+				encryptText(receivedCds,key,reencryptedCds); // encrypt the receivedCds
+				printf("Reencrypted received coordinates : %s\n", reencryptedCds);
+				for(int j = 0;j<4;j++){
+					uint8 y = 0;
+					int two_power = 128;
+					for(int k=0;k<8;k++)
+					{
+						y += ((reencryptedCds[8*(3-j)+k]-48)*two_power);
+						two_power/=2;
+					}
+					fStatus = flWriteChannel(handle, 2*chanNumber+1, 1, &y, error);
+				}
+				printf("Wrote the reencrypted coordinates on board \n");
+				sleep(0.001);
+				char receivedAck[33];
+				receivedAck[32] = '\0';
+				for(int j = 0;j<4;j++){
+					fStatus = flReadChannel(handle, 2*chanNumber, 1, dataFromFPGA.data + oldLength, error);
+					addChars(receivedAck, calcChecksum(dataFromFPGA.data + oldLength, 1),3-j);
+					oldLength = dataFromFPGA.length;
+				}
+				printf("Received encrypted Ack %s\n", receivedAck);
+				char decryptReceivedAck[33];
+				decryptText(receivedAck,key,decryptReceivedAck);
+				printf("Actual received Ack %s\n", decryptReceivedAck);
+				done = true;
+				for(int  j = 0;j<32;j++){
+					if(decryptReceivedAck[j]!=ack1[j] && done){
+						done = false;
+					}
+				}
+				if(done){
+					printf("Channel number is %d\n", 2*chanNumber);
+					break;
+				}
+				sleep(5);
+				for(int j = 0;j<4;j++){
+					fStatus = flReadChannel(handle, 2*chanNumber, 1, dataFromFPGA.data + oldLength, error);
+					addChars(receivedAck, calcChecksum(dataFromFPGA.data + oldLength, 1),3-j);
+					oldLength = dataFromFPGA.length;
+				}
+				printf("Received encrypted Ack %s\n", receivedAck);
+				decryptText(receivedAck,key,decryptReceivedAck);
+				printf("Actual received Ack %s\n", decryptReceivedAck);
+				done = true;
+				for(int  j = 0;j<32;j++){
+					if(decryptReceivedAck[j]!=ack1[j] && done){
+						done = false;
+					}
+				}
+				if(done){
+					printf("Channel number is %d\n", 2*chanNumber);
+					break;
+				}
+				printf("Channel number is not %d\n", 2*chanNumber);
+				chanNumber = (chanNumber+1)%64;
+		}
+		char encryptedAck2[33];
+		encryptText(ack2,key,encryptedAck2);
+		printf("Sending encrypted ack2 : %s\n", encryptedAck2);
+		for (int j = 0;j<4;j++){
+			uint8 x = 0;
+			int two_power = 128;
+			for(int k=0;k<8;k++)
+			{
+				x+=((encryptedAck2[8*(3-j)+k]-48)*two_power);
+				two_power/=2;
 			}
-			printf("Wrote the reencrypted coordinates on board \n");
-			sleep(0.001);
-			char receivedAck[33];
-			receivedAck[32] = '\0';
-			for(int j = 0;j<4;j++){
-				fStatus = flReadChannel(handle, 2*i, 1, dataFromFPGA.data + oldLength, error);
-				addChars(receivedAck, calcChecksum(dataFromFPGA.data + oldLength, 1),3-j);
-				oldLength = dataFromFPGA.length;
+			fStatus = flWriteChannel(handle,2*chanNumber+1,1,&x,error);
+		}
+		sleep(0.001);
+		char signalData[65], signalData1[33], signalData2[33];
+		char filename[] = "network.txt";
+		generateSignalData(signalData, filename, xCd, yCd);
+		printf("Genrated Singal Data : %s\n", signalData);
+		for(int j = 0;j<32;j++){
+			signalData1[j] = signalData[j];
+			signalData2[j] = signalData[32+j];
+		}
+		signalData1[32] = '\0';
+		signalData2[32] = '\0';
+		char dataToSend[33];
+		encryptText(signalData1,key,dataToSend);
+		printf("Sent first 4 bytes encrypted : %s\n", dataToSend);
+		for (int j = 0;j<4;j++){
+			uint8 y = 0;
+			int two_power = 128;
+			for(int k=0;k<8;k++)
+			{
+				y+=((dataToSend[8*j+k]-48)*two_power);
+				two_power/=2;
 			}
-			printf("Received encrypted Ack %s\n", receivedAck);
-			char decryptReceivedAck[33];
+			fStatus = flWriteChannel(handle,2*chanNumber+1,1,&y,error);
+		}
+		sleep(0.001);
+		char receivedAck[33], decryptReceivedAck[33];
+		receivedAck[32] = '\0';
+		done = false;
+		for(int j = 0;j<4;j++){
+			fStatus = flReadChannel(handle, 2*chanNumber, 1, dataFromFPGA.data + oldLength, error);
+			if(fStatus == FL_USB_ERR){
+				break;		
+			}
+			addChars(receivedAck, calcChecksum(dataFromFPGA.data + oldLength, 1),3-j);
+			oldLength = dataFromFPGA.length;
+		}
+		
+		if(fStatus != FL_USB_ERR){
+			printf("Received encrypted Ack : %s\n", receivedAck);
 			decryptText(receivedAck,key,decryptReceivedAck);
-			printf("Actual received Ack %s\n", decryptReceivedAck);
+			printf("Actual received Ack : %s\n", decryptReceivedAck);
 			done = true;
 			for(int  j = 0;j<32;j++){
 				if(decryptReceivedAck[j]!=ack1[j] && done){
@@ -828,18 +937,46 @@ static void simulateTrack(struct FLContext *handle, const char **error){
 				}
 			}
 			if(done){
-				printf("Channel number is %d\n", i);
-				break;
+				printf("Ack1 correctly received\n");
 			}
-			sleep(5);
-			for(int j = 0;j<4;j++){
-				fStatus = flReadChannel(handle, 2*i, 1, dataFromFPGA.data + oldLength, error);
-				addChars(receivedAck, calcChecksum(dataFromFPGA.data + oldLength, 1),3-j);
-				oldLength = dataFromFPGA.length;
+			if(!done){
+				printf("Restarting...\n");
+				simulateTrack(handle,error);
 			}
-			printf("Received encrypted Ack %s\n", receivedAck);
+		}
+		
+		else{
+			printf("Restarting...\n");
+			simulateTrack(handle,error);	
+		}
+		encryptText(signalData2,key,dataToSend);
+		printf("Sent last 4 bytes encrypted : %s\n", dataToSend);
+		for (int j = 0;j<4;j++){
+			uint8 y = 0;
+			int two_power = 128;
+			for(int k=0;k<8;k++)
+			{
+				y+=((dataToSend[8*j+k]-48)*two_power);
+				two_power/=2;
+			}
+			fStatus = flWriteChannel(handle,2*chanNumber+1,1,&y,error);
+		}
+		sleep(0.001);
+		receivedAck[32] = '\0';
+		done = false;
+		for(int j = 0;j<4;j++){
+			fStatus = flReadChannel(handle,2*chanNumber, 1, dataFromFPGA.data + oldLength, error);
+			if(fStatus == FL_USB_ERR){
+				break;		
+			}
+			addChars(receivedAck, calcChecksum(dataFromFPGA.data + oldLength, 1),3-j);
+			oldLength = dataFromFPGA.length;
+		}
+		
+		if(fStatus != FL_USB_ERR){
+			printf("Received encrypted Ack : %s\n", receivedAck);
 			decryptText(receivedAck,key,decryptReceivedAck);
-			printf("Actual received Ack %s\n", decryptReceivedAck);
+			printf("Actual received Ack : %s\n", decryptReceivedAck);
 			done = true;
 			for(int  j = 0;j<32;j++){
 				if(decryptReceivedAck[j]!=ack1[j] && done){
@@ -847,142 +984,57 @@ static void simulateTrack(struct FLContext *handle, const char **error){
 				}
 			}
 			if(done){
-				printf("Channel number is %d\n", i);
-				break;
+				printf("Ack1 correctly received\n");
 			}
-			i = (i+1)%64;
-			printf("Channel number is not %d\n", i);
-	}
-	char encryptedAck2[33];
-	encryptText(ack2,key,encryptedAck2);
-	printf("Sending encrypted ack2 : %s\n", encryptedAck2);
-	for (int j = 0;j<4;j++){
-		uint8 x = 0;
-		int two_power = 128;
-		for(int k=0;k<8;k++)
-		{
-			x+=((encryptedAck2[8*(3-j)+k]-48)*two_power);
-			two_power/=2;
+			if(!done){
+				printf("Restarting...\n");
+				simulateTrack(handle,error);
+			}
 		}
-		fStatus = flWriteChannel(handle,2*i+1,1,&x,error);
-	}
-	sleep(0.001);
-	char signalData[65], signalData1[33], signalData2[33];
-	char filename[] = "network.txt";
-	generateSignalData(signalData, filename, xCd, yCd);
-	printf("Genrated Singal Data : %s\n", signalData);
-	for(int j = 0;j<32;j++){
-		signalData1[j] = signalData[j];
-		signalData2[j] = signalData[32+j];
-	}
-	signalData1[32] = '\0';
-	signalData2[32] = '\0';
-	char dataToSend[33];
-	encryptText(signalData1,key,dataToSend);
-	printf("Sent first 4 bytes encrypted : %s\n", dataToSend);
-	for (int j = 0;j<4;j++){
-		uint8 y = 0;
-		int two_power = 128;
-		for(int k=0;k<8;k++)
-		{
-			y+=((dataToSend[8*j+k]-48)*two_power);
-			two_power/=2;
+		
+		else{
+			printf("Restarting...\n");
+			simulateTrack(handle,error);	
 		}
-		fStatus = flWriteChannel(handle,2*i+1,1,&y,error);
+		encryptText(ack2,key,encryptedAck2);
+		printf("Sending encrypted ack2 : %s\n", encryptedAck2);
+		for (int j = 0;j<4;j++){
+			uint8 x = 0;
+			int two_power = 128;
+			for(int k=0;k<8;k++)
+			{
+				x+=((encryptedAck2[8*(3-j)+k]-48)*two_power);
+				two_power/=2;
+			}
+			fStatus = flWriteChannel(handle,2*chanNumber+1,1,&x,error);
+		}
+		sleep(24.5);
+		printf("Restarting...\n");
+		simulateTrack(handle, error);
 	}
-	sleep(0.001);
-	char receivedAck[33], decryptReceivedAck[33];
-	receivedAck[32] = '\0';
-	done = false;
-	time_t start,now;
-  time(&start);
-	while(!done){
-		for(int j = 0;j<4;j++){
-			fStatus = flReadChannel(handle, 2*i, 1, dataFromFPGA.data + oldLength, error);
-			addChars(receivedAck, calcChecksum(dataFromFPGA.data + oldLength, 1),3-j);
+	else if(isUpPressed){
+		printf("Up pressed\n");
+		char encryptedUpdate[33];
+		encryptedUpdate[32] = '\0';
+		bool isRandom = true;
+		while(isRandom){
+			fStatus = flReadChannel(handle, 2*chanNumber, 1, dataFromFPGA.data + oldLength, error);
+			oldLength = dataFromFPGA.length;
+			isRandom = calcChecksum(dataFromFPGA.data + oldLength, 1) == 171;
+		}
+		for(int i = 0;i<3;i++){
+			fStatus = flReadChannel(handle, 2*chanNumber, 1, dataFromFPGA.data + oldLength, error);
+			addChars(encryptedUpdate, calcChecksum(dataFromFPGA.data + oldLength, 1),3-i);
 			oldLength = dataFromFPGA.length;
 		}
-		printf("Received encrypted Ack : %s\n", receivedAck);
-		decryptText(receivedAck,key,decryptReceivedAck);
-		printf("Actual received Ack : %s\n", decryptReceivedAck);
-		done = true;
-		for(int  j = 0;j<32;j++){
-			if(decryptReceivedAck[j]!=ack1[j] && done){
-				done = false;
-			}
-		}
-		if(done){
-			printf("Ack1 correctly received\n");
-		}
-		time(&now);
-		if(difftime(now,start)>256){
-			printf("Timeout occured\n");
-			break;
-		}
-	}
-	if(!done){
+		addChars(encryptedUpdate, calcChecksum(dataFromFPGA.data + oldLength,1),0);
+		char update[33];
+		decryptText(encryptedUpdate,key,update);
+		printf("%s\n", update);
 		printf("Restarting...\n");
-		simulateTrack(handle,error);
+		simulateTrack(handle, error);
+		/**/
 	}
-	encryptText(signalData2,key,dataToSend);
-	printf("Sent last 4 bytes encrypted : %s\n", dataToSend);
-	for (int j = 0;j<4;j++){
-		uint8 y = 0;
-		int two_power = 128;
-		for(int k=0;k<8;k++)
-		{
-			y+=((dataToSend[8*j+k]-48)*two_power);
-			two_power/=2;
-		}
-		fStatus = flWriteChannel(handle,2*i+1,1,&y,error);
-	}
-	sleep(0.001);
-	receivedAck[32] = '\0';
-	done = false;
-	time(&start);
-	while(!done){
-		for(int j = 0;j<4;j++){
-			fStatus = flReadChannel(handle, 2*i, 1, dataFromFPGA.data + oldLength, error);
-			addChars(receivedAck, calcChecksum(dataFromFPGA.data + oldLength, 1),3-j);
-			oldLength = dataFromFPGA.length;
-		}
-		printf("Received encrypted Ack : %s\n", receivedAck);
-		decryptText(receivedAck,key,decryptReceivedAck);
-		printf("Actual received Ack : %s\n", decryptReceivedAck);
-		done = true;
-		for(int  j = 0;j<32;j++){
-			if(decryptReceivedAck[j]!=ack1[j] && done){
-				done = false;
-			}
-		}
-		if(done){
-			printf("Ack1 correctly received\n");
-		}
-		time(&now);
-		if(difftime(now,start)>256){
-			printf("Timeout occured\n");
-			break;
-		}
-	}
-	if(!done){
-		printf("Restarting...\n");
-		simulateTrack(handle,error);
-	}
-	encryptText(ack2,key,encryptedAck2);
-	printf("Sending encrypted ack2 : %s\n", encryptedAck2);
-	for (int j = 0;j<4;j++){
-		uint8 x = 0;
-		int two_power = 128;
-		for(int k=0;k<8;k++)
-		{
-			x+=((encryptedAck2[8*(3-j)+k]-48)*two_power);
-			two_power/=2;
-		}
-		fStatus = flWriteChannel(handle,2*i+1,1,&x,error);
-	}
-	sleep(32);
-	printf("Restarting...\n");
-	simulateTrack(handle, error);
 }
 
 int main(int argc, char *argv[]) {

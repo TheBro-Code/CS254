@@ -42,11 +42,11 @@ architecture rtl of swled is
            enable : in  STD_LOGIC); -- enable wire
     END COMPONENT;
 
-    -- COMPONENT debouncer
-    -- Port (clk : in  STD_LOGIC;
-    --        button : in  STD_LOGIC;
-    --        button_deb : out  STD_LOGIC);
-    -- END COMPONENT;
+    COMPONENT debouncer
+    Port (clk : in  STD_LOGIC;
+           button : in  STD_LOGIC;
+           button_deb : out  STD_LOGIC);
+    END COMPONENT;
 
 	-- Registers implementing the channels
 	signal reg0, reg0_next : std_logic_vector(7 downto 0)  := (others => '0');
@@ -60,7 +60,9 @@ architecture rtl of swled is
 
 	-- extra signal included for mapping reset to the board
 
-	-- signal debounced_reset : std_logic := '0';
+	signal debounced_reset : std_logic := '0';
+	signal debounced_up : std_logic := '0';
+	signal debounced_down : std_logic := '0';
 
 	-- Output Registers
 	signal out0, out0_next : std_logic_vector(23 downto 0)  := (others => '0');
@@ -86,6 +88,7 @@ architecture rtl of swled is
 	signal counter2, cnt_next2 : integer  := 0; -- Counter which increments when h2fValid_in = '1'
 	signal counter3, cnt_next3 : integer  := 0; -- Counter which increments when f2hReady_in = '1'
 	signal counter4, cnt_next4 : integer  := 0; -- Counter which increments which waits for decryption of ACK2
+	signal counter5, cnt_next5 : integer  := 0; -- for reseting purposes
 	signal led_out1, led_out1_next : std_logic_vector(7 downto 0)  := (others => '0'); -- Displaying led signals
 	signal cd_match, cd_match1, cd_match2: std_logic := '0'; -- Checking matching of received co-ordinates and ecnrypted ACK2
 	signal encrypted_cd : std_logic_vector(31 downto 0) := (others => '0'); -- encrypted coordinates to send to host
@@ -97,18 +100,21 @@ architecture rtl of swled is
 	signal myenable4,myenable4_next : std_logic := '0'; -- Enable for decrypting next 4 bytes of encrypted information from host
 	signal myenable5,myenable5_next : std_logic := '0'; -- Enable for decrypting encrypted ack2
 	signal reset1 : std_logic := '0'; -- common reset pin for all encrypters and decrypters
-	signal read_channel : std_logic_vector(6 downto 0) := "1000100"; -- Channel from which host reads
-	signal write_channel : std_logic_vector(6 downto 0) := "1000101"; -- Channel to which host write
- 
+	signal read_channel : std_logic_vector(6 downto 0) := "0000010"; -- Channel from which host reads
+	signal write_channel : std_logic_vector(6 downto 0) := "0000011"; -- Channel to which host write
+	signal s0_state : std_logic := '0';
+	signal up_signal,up_signal_next : std_logic := '0';
+ 	signal sw_in1, sw_in_enc : std_logic_vector(31 downto 0) := (others => '0');
+ 	signal f2hData_out1, f2hData_out1_next : std_logic_vector(7 downto 0) := (others => '0');
 	
 begin                                                                     --BEGIN_SNIPPET(registers)
 	-- Infer registers
 	process(clk_in)
 	begin
 		if ( rising_edge(clk_in) ) then
-			-- if( debounced_reset = '1' -- reset the circuit
-			if ( reset_in = '1' -- reset the circuit
-				or counter = 1536000000 -- 32 seconds (24 seconds for displaying outputs and 8 seconds wait before next input)
+			if( debounced_reset = '1' -- reset the circuit
+			-- if ( reset_in = '1' -- reset the circuit
+				--or counter = 1536000000 -- 32 seconds (24 seconds for displaying outputs and 8 seconds wait before next input)
 				or counter1 = "001011011100011011000000000000000000")  then -- 256 seconds for timeout
 				reg0 <= (others => '0');
 				reg1 <= (others => '0');
@@ -132,12 +138,17 @@ begin                                                                     --BEGI
 				counter2 <= 0;
 				counter3 <= 0;
 				counter4 <= 0;
+				counter5 <= 0;
 				myenable <= '0';
 				myenable2 <= '0';
 				myenable3 <= '0';
 				myenable4 <= '0';
 				myenable5 <= '0';
+				up_signal <= '0';
 				reset1 <= '1';
+				f2hData_out1 <= (others => '0');
+			elsif (s0_state = '1') then
+				counter5 <= cnt_next5;
 			else
 				reg0 <= reg0_next;
 				reg1 <= reg1_next;
@@ -166,24 +177,33 @@ begin                                                                     --BEGI
 				counter2 <= cnt_next2;
 				counter3 <= cnt_next3;
 				counter4 <= cnt_next4;
+				counter5 <= 0;
 				encrypted_cd2 <= encrypted_cd2_next;
 				ack2_encrypted <= ack2_encrypted_next;
 				ack2_encrypted1 <= ack2_encrypted_next1;
 				encrypted_info <= encrypted_info_next;
 				reset1 <= '0';
+				up_signal <= up_signal_next;
+				f2hData_out1 <= f2hData_out1_next;
 			end if;
 		end if;
 	end process;
 
-	-- deb : debouncer
-	-- port map (clk_in,reset_in,debounced_reset);
+	deb : debouncer
+	port map (clk_in,reset_in,debounced_reset);
+
+	deb1 : debouncer 
+	port map (clk_in,up,debounced_up);
+
+	deb2 : debouncer 
+	port map (clk_in,down,debounced_down);
 
 	-- Assert that there's always data for reading, and always room for writing
 	f2hValid_out <= '1';
 	h2fReady_out <= '1';
  
-	read_channel <= "1000100"; -- Channel from which host reads
-	write_channel <= "1000101"; -- Channel to which host writes
+	read_channel <= "0000010"; -- Channel from which host reads
+	write_channel <= "0000011"; -- Channel to which host writes
 
 	cnt_next1 <=
 		counter1 + 1 when (counter3 = 4 and cd_match = '0') or (counter3 = 8 and cd_match1 = '0' ) or (counter3 = 16 and cd_match2 = '0')
@@ -192,8 +212,13 @@ begin                                                                     --BEGI
 		counter2 + 1 when h2fValid_in = '1' and chanAddr_in = write_channel
 		else counter2;
 	cnt_next3 <= 
-		counter3 + 1 when f2hReady_in = '1' and chanAddr_in = read_channel
+		counter3 + 1 when f2hReady_in = '1' and chanAddr_in = read_channel and f2hData_out1 /= x"AB"
 		else counter3;
+	s0_state <=
+		'1' when debounced_reset = '1' and counter5 < 144000000
+		else '0' when counter5 >= 144000000
+		else s0_state;
+	cnt_next5 <= counter5 + 1;
 
 	coordinates <=  "00100010000000000000000000000000";
 	enc1 : encrypter
@@ -202,7 +227,7 @@ begin                                                                     --BEGI
 	port map (clk_in, key, ack1_encrypted, ack1, reset1, '1');
 
 	-- Select values to return for each channel when the host is reading
-	f2hData_out <=
+	f2hData_out1_next <=
 		encrypted_cd(7 downto 0) when chanAddr_in = read_channel and counter3 = 0 -- Sending first byte of encrypted coordinates 
 		else encrypted_cd(15 downto 8) when chanAddr_in = read_channel and counter3 = 1 -- Sending second byte of encrypted coordinates 
 		else encrypted_cd(23 downto 16) when chanAddr_in = read_channel and counter3 = 2 -- Sending third byte of encrypted coordinates
@@ -223,11 +248,20 @@ begin                                                                     --BEGI
 		else ack1_encrypted(23 downto 16) when chanAddr_in = read_channel and counter3 = 14 -- Sending third byte of encrypted coordinates on decrypting next four bytes of information from board
 		else ack1_encrypted(31 downto 24) when chanAddr_in = read_channel and counter3 = 15 -- Sending four byte of encrypted coordinates on decrypting next four bytes of information from board
 
+		--else sw_in when chanAddr_in = read_channel and counter3 = 16 and counter >= 1152000000 and debounced_down = '1' and up_signal = '1';
+		else x"69" when up_signal = '1' and counter3 = 16
+		else sw_in_enc(7 downto 0) when debounced_down = '1' and counter3 = 17
+		else sw_in_enc(15 downto 8) when debounced_down = '1' and counter3 = 18
+		else sw_in_enc(23 downto 16) when debounced_down = '1' and counter3 = 19
+		else sw_in_enc(31 downto 24) when debounced_down = '1' and counter3 = 20
 		else x"AB";
+
+
 
 	-- read and store encrypted data written by host on channel 1 in encrypted_cd2
 	-- Each time the host writes h2fValid_in becomes '1' and counter2 increases by 1 ensuring that data is stored sequentially in encrypted_cd2.
-	
+	f2hData_out <= f2hData_out1;
+
 	encrypted_cd2_next(7 downto 0) <= 
 		h2fData_in when chanAddr_in = write_channel and h2fValid_in = '1' and counter2 = 0 
 		else encrypted_cd2(7 downto 0); -- First byte of Encrypted coordinates being read from host
@@ -395,7 +429,7 @@ begin                                                                     --BEGI
 		else reg7;
 
 	cnt_next <=
-		counter + 1 when counter4 >= 40
+		counter + 1 when counter4 >= 40  and counter <= 1200000100
 		else counter;
 	
 	-- for first four directions the lights displayed will remain same for 3 seconds since according to given conditions since amber
@@ -539,8 +573,23 @@ begin                                                                     --BEGI
 		out7(15 downto 8)     when 1104000000,
 		out7(23 downto 16)    when 1152000000,
 		led_out1  when others;
-		
-	led_out <= led_out1;
+
+	up_signal_next <=
+	   '1' when debounced_up = '1'
+	   else '0' when debounced_down = '1'
+	   else up_signal;
+
+	led_out <= 
+	"11111111" when counter5 >= 1
+	else "10101010"	when counter >= 1200000000 and up_signal = '1' and counter3 = 17
+	else "01010101" when counter >= 1200000000 and debounced_down = '1' and counter3 = 21
+	else led_out1;
+
+	enc3 : encrypter
+	port map (clk_in, key, sw_in1, sw_in_enc, reset1, '1');
+
+	sw_in1 <= sw_in & "000000000000000000000000";
+
 	flags <= "00" & f2hReady_in & reset_in;
 	seven_seg : entity work.seven_seg
 		port map(
